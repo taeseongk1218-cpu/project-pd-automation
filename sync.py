@@ -18,7 +18,7 @@
      인스타그램이 이미지를 내려받을 수 있으려면 그 URL이 이미 공개되어 있어야 하기 때문).
 
 이 스크립트는 기존 쓰레드 자동화(Make.com 시나리오, gov-thread-autopost)를 전혀 건드리지
-않는다 - 이 저장소 안에서만 동작하고 새 파일만 만든다.
+않는다 - 이 폴더 안에서만 동작하고 새 파일만 만든다.
 """
 import html
 import json
@@ -67,7 +67,7 @@ def parse_feed(xml_text):
         link = (item.findtext("link") or "").strip()
         desc = html.unescape(item.findtext("description") or "")
         if not desc:
-            content_encoded = item.findtext("{http://purl.org/rss/1.0/modules/content}encoded")
+            content_encoded = item.findtext("{http://purl.org/rss/1.0/modules/content/}encoded")
             desc = html.unescape(content_encoded or "")
         items.append({"title": title, "link": link, "desc": desc})
     return items
@@ -124,7 +124,7 @@ def collect_matches(pairs, now):
 def write_latest(pairs, now):
     candidates = [(sid, rec) for sid, rec in pairs.items() if "tistory" in rec]
     if not candidates:
-        log("아직 PD-SOURCE-ID가 붙은 글 이 없습니다 (정상 - 앞으로 새 글부터 적용됩니다).")
+        log("아직 PD-SOURCE-ID가 붙은 글이 없습니다 (정상 - 앞으로 새 글부터 적용됩니다).")
         return
     sid, latest = max(candidates, key=lambda kv: kv[1]["first_seen_at"])
     latest_out = {
