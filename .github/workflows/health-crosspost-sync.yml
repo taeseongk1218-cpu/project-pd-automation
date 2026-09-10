@@ -1,0 +1,53 @@
+name: Health Blog Cross-Post Sync
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 한글 폰트 설치 (인스타그램 카드용)
+        run: sudo apt-get update -y && sudo apt-get install -y fonts-noto-cjk
+
+      - name: 의존성 설치
+        run: pip install Pillow
+
+      - name: 티스토리·블로그스팟 글 매칭 + 인스타그램 카드 준비
+        run: python sync.py
+
+      - name: 매칭 결과 커밋 (이미지가 공개 URL로 뜨게 먼저 반영)
+        run: |
+          git config user.name "health-crosspost-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add pairs.json latest.json instagram_cards
+          git diff --cached --quiet || git commit -m "매칭 상태 갱신 + 인스타그램 카드 생성"
+          git pull --rebase origin main
+          git push
+
+      - name: 인스타그램 자동 게시 (90분 지난 글)
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: python instagram_publish.py
+
+      - name: 게시 결과 커밋
+        if: always()
+        run: |
+          git config user.name "health-crosspost-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add pairs.json
+          git diff --cached --quiet || git commit -m "인스타그램 게시 결과 기록"
+          git pull --rebase origin main
+          git push
