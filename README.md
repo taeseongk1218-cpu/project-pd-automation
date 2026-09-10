@@ -85,4 +85,3 @@ SOURCE ID 주석**을 하나씩 넣어주세요 (화면에는 보이지 않는 H
 매칭·인스타그램 게시 대상이 됩니다. 인스타그램만 다시 올리고 싶으면 그 항목의
 `instagram_posted`를 `false`로 바꾸세요(`instagram_image_committed`는 `true`로 둬도 됨 -
 이미지가 이미 있으면 다시 만들지 않고 그대로 재사용합니다).
-# project-pd-automation
