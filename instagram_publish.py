@@ -2,11 +2,18 @@
 """
 sync.py가 만들어둔(그리고 이미 커밋되어 공개 URL로 접근 가능한) 인스타그램 카드 이미지를
 실제로 인스타그램에 올린다. sync.py의 커밋/푸시가 끝난 "다음" 워크플로우 단계에서 실행해야
-한다 - 인스타그램이 image_url을 내려받으려면 그 이미지가 이미 GitHub에 반영되어 있어야
+한다 - 인스타그램이 image_url을 내려받을 수 있으려면 그 이미지가 이미 GitHub에 반영되어 있어야
 하기 때문이다.
 
 IG_ACCESS_TOKEN / IG_USER_ID 시크릿이 아직 없으면 아무 것도 하지 않고 조용히 끝난다
 (자격 증명을 나중에 등록해도 안전하게 이어서 쓸 수 있도록).
+
+발행 규칙(사용자 지정):
+  - 글 하나당 퀄리티 높은 게시물 1개만 올린다 (기존과 동일).
+  - 같은 날 여러 글이 밀려서 올라올 경우를 대비해, 인스타그램 게시물 사이에는
+    최소 4시간 간격을 둔다 - 간격이 안 됐으면 이번 실행에서는 건너뛰고 다음 정기 실행
+    (15분 주기)에서 다시 확인한다.
+  - 매번 몇 분씩 무작위로 늦춰 발행해서 매일 똑같은 분(分)에 올라가지 않게 한다.
 """
 import json
 import os
@@ -19,19 +26,18 @@ from datetime import datetime, timezone
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PAIRS_PATH = os.path.join(BASE_DIR, "pairs.json")
+STATE_PATH = os.path.join(BASE_DIR, "instagram_state.json")
 
-# 이 저장소(project-pd-automation)의 raw 파일 경로. 저장소/브랜치/경로를 바꾸면 여기도 맞춰 바꿔야 한다.
 RAW_BASE = (
     "https://raw.githubusercontent.com/taeseongk1218-cpu/project-pd-automation/main/"
     "instagram_cards"
 )
 
-# Instagram Login 기반 Graph API 기본값(instagram_business_basic 등 신규 권한 체계).
-# 만약 페이스북 페이지 연결형(구) 토큰을 쓴다면 IG_API_BASE 시크릿으로
-# https://graph.facebook.com/v21.0 를 넣어서 덮어쓸 수 있다.
 API_BASE = os.environ.get("IG_API_BASE", "https://graph.instagram.com/v21.0")
 
 INSTAGRAM_DELAY_MIN = 90
+MIN_GAP_HOURS = 4
+JITTER_MAX_SEC = 9 * 60
 
 
 def log(msg):
@@ -50,14 +56,20 @@ def parse_iso(s):
     return datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
 
-def load_pairs():
-    with open(PAIRS_PATH, "r", encoding="utf-8") as f:
+def now_iso():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def load_json(path, default):
+    if not os.path.exists(path):
+        return default
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def save_pairs(pairs):
-    with open(PAIRS_PATH, "w", encoding="utf-8") as f:
-        json.dump(pairs, f, ensure_ascii=False, indent=2)
+def save_json(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
 
@@ -116,10 +128,19 @@ def main():
         log("IG_ACCESS_TOKEN / IG_USER_ID 시크릿이 아직 없습니다 - 인스타그램 발행 단계는 건너뜁니다.")
         return
 
-    pairs = load_pairs()
+    pairs = load_json(PAIRS_PATH, {})
+    state = load_json(STATE_PATH, {"last_posted_at": ""})
     now = datetime.now(timezone.utc)
-    changed = False
 
+    last_posted_at = state.get("last_posted_at")
+    if last_posted_at:
+        gap_hours = (now - parse_iso(last_posted_at)).total_seconds() / 3600
+        if gap_hours < MIN_GAP_HOURS:
+            log(f"마지막 인스타그램 게시로부터 {gap_hours:.1f}시간 경과 (최소 {MIN_GAP_HOURS}시간 필요) - 이번 실행은 건너뜁니다.")
+            return
+
+    due = None
+    due_sid = None
     for sid, rec in pairs.items():
         if rec.get("instagram_posted"):
             continue
@@ -128,30 +149,39 @@ def main():
         age_min = (now - parse_iso(rec["first_seen_at"])).total_seconds() / 60
         if age_min < INSTAGRAM_DELAY_MIN:
             continue
+        due, due_sid = rec, sid
+        break
 
-        title = rec.get("tistory", {}).get("title") or rec.get("blogspot", {}).get("title")
-        urls = [rec[p]["url"] for p in ("tistory", "blogspot") if p in rec]
-        if not title or not urls:
-            continue
-        chosen_url = random.choice(urls)
-        image_url = f"{RAW_BASE}/{sid}.png"
-        caption = build_caption(title, chosen_url)
+    if not due:
+        return
 
-        try:
-            creation_id = create_container(user_id, token, image_url, caption)
-            wait_until_ready(creation_id, token)
-            media_id = publish_container(user_id, token, creation_id)
-            rec["instagram_posted"] = True
-            rec["instagram_posted_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-            rec["instagram_media_id"] = media_id
-            rec["instagram_chosen_url"] = chosen_url
-            changed = True
-            log(f"{sid}: 인스타그램 게시 완료 ({media_id})")
-        except Exception as e:
-            log(f"{sid}: 인스타그램 게시 실패 - {e}")
+    title = due.get("tistory", {}).get("title") or due.get("blogspot", {}).get("title")
+    urls = [due[p]["url"] for p in ("tistory", "blogspot") if p in due]
+    if not title or not urls:
+        return
 
-    if changed:
-        save_pairs(pairs)
+    jitter = random.randint(0, JITTER_MAX_SEC)
+    log(f"{jitter}초 무작위 대기 후 발행합니다 (매일 다른 시각처럼 보이게 하기 위함).")
+    time.sleep(jitter)
+
+    chosen_url = random.choice(urls)
+    image_url = f"{RAW_BASE}/{due_sid}.png"
+    caption = build_caption(title, chosen_url)
+
+    try:
+        creation_id = create_container(user_id, token, image_url, caption)
+        wait_until_ready(creation_id, token)
+        media_id = publish_container(user_id, token, creation_id)
+        due["instagram_posted"] = True
+        due["instagram_posted_at"] = now_iso()
+        due["instagram_media_id"] = media_id
+        due["instagram_chosen_url"] = chosen_url
+        state["last_posted_at"] = now_iso()
+        save_json(PAIRS_PATH, pairs)
+        save_json(STATE_PATH, state)
+        log(f"{due_sid}: 인스타그램 게시 완료 ({media_id})")
+    except Exception as e:
+        log(f"{due_sid}: 인스타그램 게시 실패 - {e}")
 
 
 if __name__ == "__main__":
