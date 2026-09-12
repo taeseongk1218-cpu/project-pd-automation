@@ -181,7 +181,7 @@ def main():
 
     chosen_url = random.choice(urls)
     image_url = f"{RAW_BASE}/{due_sid}.png"
-    caption = build_caption(title, chosen_url, due_sid)
+    caption = due.get("instagram_caption") or build_caption(title, chosen_url, due_sid)
 
     try:
         creation_id = create_container(user_id, token, image_url, caption)
