@@ -22,7 +22,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PAIRS_PATH = os.path.join(BASE_DIR, "pairs.json")
@@ -35,8 +35,10 @@ RAW_BASE = (
 
 API_BASE = os.environ.get("IG_API_BASE", "https://graph.instagram.com/v21.0")
 
-INSTAGRAM_DELAY_MIN = 90
 MIN_GAP_HOURS = 4
+KST = timezone(timedelta(hours=9))
+POST_START_HOUR = 8
+POST_END_HOUR = 22
 JITTER_MAX_SEC = 9 * 60
 
 
@@ -131,6 +133,12 @@ def main():
     pairs = load_json(PAIRS_PATH, {})
     state = load_json(STATE_PATH, {"last_posted_at": ""})
     now = datetime.now(timezone.utc)
+    kst_now = now.astimezone(KST)
+    kst_minutes = kst_now.hour * 60 + kst_now.minute
+
+    if not (POST_START_HOUR * 60 <= kst_minutes < POST_END_HOUR * 60):
+        log("인스타그램 게시 가능 시간(한국시간 08:00~22:00)이 아니어서 이번 실행은 건너뜁니다.")
+        return
 
     last_posted_at = state.get("last_posted_at")
     if last_posted_at:
@@ -141,13 +149,13 @@ def main():
 
     due = None
     due_sid = None
-    for sid, rec in pairs.items():
+    for sid, rec in sorted(
+        pairs.items(),
+        key=lambda kv: kv[1].get("first_seen_at", "")
+    ):
         if rec.get("instagram_posted"):
             continue
         if not rec.get("instagram_image_committed"):
-            continue
-        age_min = (now - parse_iso(rec["first_seen_at"])).total_seconds() / 60
-        if age_min < INSTAGRAM_DELAY_MIN:
             continue
         due, due_sid = rec, sid
         break
