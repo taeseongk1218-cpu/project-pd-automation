@@ -41,6 +41,7 @@ CARDS_DIR = os.path.join(BASE_DIR, "instagram_cards")
 
 SOURCE_ID_RE = re.compile(r"PD-SOURCE-ID:\s*(PD-\d{8}-\d{3})")
 THREADS_PRIORITY_RE = re.compile(r"PD-THREADS-PRIORITY:\s*(\d{1,3})")
+INSTAGRAM_CAPTION_RE = re.compile(r"PD-INSTAGRAM-CAPTION:\s*([^<]+)")
 
 
 def log(msg):
@@ -84,6 +85,10 @@ def extract_threads_priority(desc):
         return 0
     return max(0, min(100, int(m.group(1))))
 
+def extract_instagram_caption(desc):
+    m = INSTAGRAM_CAPTION_RE.search(desc)
+    return m.group(1).strip() if m else ""
+
 def now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -119,11 +124,14 @@ def collect_matches(pairs, now):
                 continue
             rec = pairs.setdefault(sid, {})
             priority = extract_threads_priority(item["desc"])
+            instagram_caption = extract_instagram_caption(item["desc"])
 
             if priority > 0:
                 rec["threads_priority"] = priority
             else:
                 rec.setdefault("threads_priority", 0)
+            if instagram_caption:
+                rec["instagram_caption"] = instagram_caption
             if label not in rec:
                 rec[label] = {"url": item["link"], "title": item["title"], "found_at": now}
                 log(f"{sid}: {label} 글 매칭 등록 - {item['title']}")
