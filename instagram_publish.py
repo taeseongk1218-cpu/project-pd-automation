@@ -75,12 +75,16 @@ def save_json(path, data):
         f.write("\n")
 
 
-def build_caption(title, chosen_url):
+def build_caption(title, chosen_url, source_id):
     return (
+        f"📺 오늘 방송에서 눈여겨볼 이야기\n\n"
         f"{title}\n\n"
+        f"방송에서 화제가 된 내용을 바탕으로 핵심만 다시 정리했습니다. "
+        f"궁금했던 포인트를 확인해 보세요.\n\n"
+        f"자세한 내용은 아래 글에서 확인할 수 있습니다.\n"
         f"{chosen_url}\n\n"
-        f"[500md87 건강블로그 새 글]\n\n"
-        f"#건강정보 #건강블로그 #오늘의건강"
+        f"PROJECT PD · {source_id}\n\n"
+        f"#오늘의방송 #방송트렌드 #화제의정보 #프로젝트PD"
     )
 
 
@@ -174,7 +178,7 @@ def main():
 
     chosen_url = random.choice(urls)
     image_url = f"{RAW_BASE}/{due_sid}.png"
-    caption = build_caption(title, chosen_url)
+    caption = build_caption(title, chosen_url, due_sid)
 
     try:
         creation_id = create_container(user_id, token, image_url, caption)
