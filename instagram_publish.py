@@ -175,7 +175,7 @@ def main():
     jitter = random.randint(0, JITTER_MAX_SEC)
     log(f"{jitter}초 무작위 대기 후 발행합니다 (매일 다른 시각처럼 보이게 하기 위함).")
     time.sleep(jitter)
-      if datetime.now(timezone.utc).astimezone(KST).hour >= POST_END_HOUR:
+    if datetime.now(timezone.utc).astimezone(KST).hour >= POST_END_HOUR:
         log("무작위 대기 후 22:00을 넘겨 이번 실행은 건너뜁니다.")
         return
 
