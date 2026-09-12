@@ -118,13 +118,13 @@ def collect_matches(pairs, now):
             sid = extract_source_id(item["desc"])
             if not sid:
                 continue
-            rec = pairs.setdefault(sid, {})
-          priority = extract_threads_priority(item["desc"])
+                        rec = pairs.setdefault(sid, {})
+            priority = extract_threads_priority(item["desc"])
 
-if priority > 0:
-    rec["threads_priority"] = priority
-else:
-    rec.setdefault("threads_priority", 0)
+            if priority > 0:
+                rec["threads_priority"] = priority
+            else:
+                rec.setdefault("threads_priority", 0)
             if label not in rec:
                 rec[label] = {"url": item["link"], "title": item["title"], "found_at": now}
                 log(f"{sid}: {label} 글 매칭 등록 - {item['title']}")
