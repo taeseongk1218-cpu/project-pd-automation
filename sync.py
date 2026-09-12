@@ -40,6 +40,7 @@ LATEST_PATH = os.path.join(BASE_DIR, "latest.json")
 CARDS_DIR = os.path.join(BASE_DIR, "instagram_cards")
 
 SOURCE_ID_RE = re.compile(r"PD-SOURCE-ID:\s*(PD-\d{8}-\d{3})")
+THREADS_PRIORITY_RE = re.compile(r"PD-THREADS-PRIORITY:\s*(\d{1,3})")
 INSTAGRAM_DELAY_MIN = 90
 
 
@@ -74,6 +75,11 @@ def parse_feed(xml_text):
 
 
 def extract_source_id(desc):
+  def extract_threads_priority(desc):
+    m = THREADS_PRIORITY_RE.search(desc)
+    if not m:
+        return 0
+    return max(0, min(100, int(m.group(1))))
     m = SOURCE_ID_RE.search(desc)
     return m.group(1) if m else None
 
@@ -112,6 +118,12 @@ def collect_matches(pairs, now):
             if not sid:
                 continue
             rec = pairs.setdefault(sid, {})
+          priority = extract_threads_priority(item["desc"])
+
+if priority > 0:
+    rec["threads_priority"] = priority
+else:
+    rec.setdefault("threads_priority", 0)
             if label not in rec:
                 rec[label] = {"url": item["link"], "title": item["title"], "found_at": now}
                 log(f"{sid}: {label} 글 매칭 등록 - {item['title']}")
