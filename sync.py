@@ -75,14 +75,15 @@ def parse_feed(xml_text):
 
 
 def extract_source_id(desc):
-  def extract_threads_priority(desc):
+    m = SOURCE_ID_RE.search(desc)
+    return m.group(1) if m else None
+
+
+def extract_threads_priority(desc):
     m = THREADS_PRIORITY_RE.search(desc)
     if not m:
         return 0
     return max(0, min(100, int(m.group(1))))
-    m = SOURCE_ID_RE.search(desc)
-    return m.group(1) if m else None
-
 
 def now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
