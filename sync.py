@@ -41,7 +41,6 @@ CARDS_DIR = os.path.join(BASE_DIR, "instagram_cards")
 
 SOURCE_ID_RE = re.compile(r"PD-SOURCE-ID:\s*(PD-\d{8}-\d{3})")
 THREADS_PRIORITY_RE = re.compile(r"PD-THREADS-PRIORITY:\s*(\d{1,3})")
-INSTAGRAM_DELAY_MIN = 90
 
 
 def log(msg):
@@ -158,8 +157,8 @@ def generate_due_cards(pairs, now):
         if rec.get("instagram_posted") or rec.get("instagram_image_committed"):
             continue
         age_min = (now_dt - parse_iso(rec["first_seen_at"])).total_seconds() / 60
-        if age_min < INSTAGRAM_DELAY_MIN:
-            continue
+        
+            
         title = rec.get("tistory", {}).get("title") or rec.get("blogspot", {}).get("title")
         if not title:
             continue
