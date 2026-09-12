@@ -123,25 +123,49 @@ def build_promo_text(rec, idx):
 
 
 def choose_action(pairs, state):
-    candidates = [(sid, rec) for sid, rec in pairs.items() if "tistory" in rec]
-    newest_sid = None
-    if candidates:
-        newest_sid = max(candidates, key=lambda kv: kv[1]["first_seen_at"])[0]
+    candidates = [
+        (sid, rec)
+        for sid, rec in pairs.items()
+        if "tistory" in rec
+    ]
 
-    current_sid = state.get("current_source_id") or ""
+    # 1. 아직 Threads에 한 번도 소개하지 않은 새 글이 있으면 새 글 최우선
+    new_candidates = [
+        (sid, rec)
+        for sid, rec in candidates
+        if rec.get("threads_angles_posted", 0) == 0
+    ]
 
-    if newest_sid and newest_sid != current_sid:
-        already_started = pairs[newest_sid].get("threads_angles_posted", 0) > 0
-        if not already_started:
-            state["current_source_id"] = newest_sid
-            pairs[newest_sid]["threads_angles_posted"] = 0
-            current_sid = newest_sid
+    if new_candidates:
+        sid, rec = max(
+            new_candidates,
+            key=lambda kv: kv[1].get("first_seen_at", "")
+        )
+        state["current_source_id"] = sid
+        return "promo", sid, 0
 
-    if current_sid and current_sid in pairs:
-        posted = pairs[current_sid].get("threads_angles_posted", 0)
-        if posted < 3:
-            return "promo", current_sid, posted
+    # 2. 새 글이 없으면 관점 3개를 아직 다 쓰지 않은 기존 글 중
+    #    Threads 우선순위 점수가 가장 높은 글을 선택
+    remaining = [
+        (sid, rec)
+        for sid, rec in candidates
+        if 0 < rec.get("threads_angles_posted", 0) < 3
+    ]
 
+    if remaining:
+        sid, rec = max(
+            remaining,
+            key=lambda kv: (
+                float(kv[1].get("threads_priority", 0) or 0),
+                kv[1].get("first_seen_at", "")
+            )
+        )
+
+        posted = rec.get("threads_angles_posted", 0)
+        state["current_source_id"] = sid
+        return "promo", sid, posted
+
+    # 3. 모든 글의 관점 3개를 다 사용한 경우에만 일반 건강 팁
     return "tip", None, None
 
 
