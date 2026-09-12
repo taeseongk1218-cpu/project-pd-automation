@@ -118,7 +118,7 @@ def collect_matches(pairs, now):
             sid = extract_source_id(item["desc"])
             if not sid:
                 continue
-                        rec = pairs.setdefault(sid, {})
+            rec = pairs.setdefault(sid, {})
             priority = extract_threads_priority(item["desc"])
 
             if priority > 0:
