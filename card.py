@@ -17,8 +17,9 @@ FONT_CANDIDATES = [
 BG_COLOR = (255, 247, 235)
 ACCENT_COLOR = (255, 138, 101)
 TEXT_COLOR = (51, 51, 51)
-SIZE = (1080, 1080)
-BRAND_TEXT = "500md87.com"
+SIZE = (1080, 1350)
+BRAND_TEXT = "PROJECT PD · 500md87.com"
+SUBTITLE_TEXT = "오늘의 방송 트렌드"
 
 
 def _find_font():
@@ -33,16 +34,25 @@ def make_title_card(title: str, out_path: str) -> None:
     draw = ImageDraw.Draw(img)
     draw.rectangle([0, 0, SIZE[0], 28], fill=ACCENT_COLOR)
     draw.rectangle([0, SIZE[1] - 28, SIZE[0], SIZE[1]], fill=ACCENT_COLOR)
+    draw.rounded_rectangle(
+        [90, 230, SIZE[0] - 90, SIZE[1] - 190],
+        radius=40,
+        fill=(255, 255, 255)
+    )
 
     font_path = _find_font()
     title_font = ImageFont.truetype(font_path, 64, index=0) if font_path else ImageFont.load_default()
     brand_font = ImageFont.truetype(font_path, 34, index=0) if font_path else ImageFont.load_default()
+    subtitle_font = ImageFont.truetype(font_path, 38, index=0) if font_path else ImageFont.load_default()
+    bbox = draw.textbbox((0, 0), SUBTITLE_TEXT, font=subtitle_font)
+    w = bbox[2] - bbox[0]
+    draw.text(((SIZE[0] - w) // 2, 110), SUBTITLE_TEXT, font=subtitle_font, fill=ACCENT_COLOR)
 
     wrapped = textwrap.fill(title, width=13)
     lines = wrapped.split("\n")
     line_height = 84
     total_h = line_height * len(lines)
-    y = (SIZE[1] - total_h) // 2
+    y = 230 + ((SIZE[1] - 190 - 230) - total_h) // 2
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=title_font)
         w = bbox[2] - bbox[0]
