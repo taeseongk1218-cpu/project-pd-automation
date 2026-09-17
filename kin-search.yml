@@ -1,0 +1,34 @@
+name: Kin Promotion Candidate Search
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 새 게시물 검색 + 지식인 후보 초안 생성 (검색 시크릿 없음)
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        run: python kin_search.py
+
+      - name: 결과 커밋
+        run: |
+          git config user.name "kin-search-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add kin_candidates.json kin_state.json
+          git diff --cached --quiet || git commit -m "지식인 홍보 후보 갱신"
+          git pull --rebase origin main
+          git push
