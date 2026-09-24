@@ -127,7 +127,9 @@
     },
     "first_seen_at": "2026-09-24T11:43:49Z",
     "instagram_posted": false,
-    "instagram_image_committed": true
+    "instagram_image_committed": true,
+    "threads_angles_posted": 1,
+    "threads_last_posted_at": "2026-09-24T23:16:34Z"
   },
   "PD-20260924-003": {
     "threads_priority": 0,
