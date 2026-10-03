@@ -274,5 +274,16 @@
     "instagram_image_committed": true,
     "threads_angles_posted": 1,
     "threads_last_posted_at": "2026-10-03T08:43:44Z"
+  },
+  "PD-20261003-002": {
+    "threads_priority": 0,
+    "blogspot": {
+      "url": "https://projectpdlab.blogspot.com/2026/10/camping-electric-mat-guide.html",
+      "title": "캠핑 전기장판 비교, 카본매트부터 온수매트까지 뭐가 다를까",
+      "found_at": "2026-10-03T14:39:46Z"
+    },
+    "first_seen_at": "2026-10-03T14:39:46Z",
+    "instagram_posted": false,
+    "instagram_image_committed": true
   }
 }
